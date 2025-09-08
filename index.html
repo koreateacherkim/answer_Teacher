@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>교사를 위한 모범 답안 생성기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="container bg-white rounded-xl shadow-lg p-8 space-y-6">
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-gray-800">교사를 위한 모범 답안 생성기</h1>
+            <p class="text-gray-500">학생의 질문을 입력하고 교사 입장에서의 친절하고 이해하기 쉬운 답변을 생성하세요.</p>
+        </div>
+
+        <div class="space-y-4">
+            <label for="studentQuestion" class="block text-gray-700 font-semibold">학생의 질문:</label>
+            <textarea id="studentQuestion" rows="5" placeholder="예: 선생님, 왜 수학을 배워야 하나요? 저는 나중에 이과에 가지 않을 건데요." class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 resize-none"></textarea>
+        </div>
+
+        <button id="generateBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 flex items-center justify-center space-x-2">
+            <span id="buttonText">답변 생성하기</span>
+            <div id="loadingIndicator" class="loading-spinner hidden"></div>
+        </button>
+
+        <div id="answerContainer" class="p-6 bg-gray-50 border border-gray-200 rounded-lg hidden">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">교사 모범 답안:</h3>
+            <div id="teacherAnswer" class="text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const studentQuestionInput = document.getElementById('studentQuestion');
+        const generateBtn = document.getElementById('generateBtn');
+        const buttonText = document.getElementById('buttonText');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const answerContainer = document.getElementById('answerContainer');
+        const teacherAnswerDiv = document.getElementById('teacherAnswer');
+
+        // 함수: 로딩 상태를 설정하고 UI를 업데이트합니다.
+        function setLoading(isLoading) {
+            generateBtn.disabled = isLoading;
+            if (isLoading) {
+                buttonText.textContent = '생성 중...';
+                loadingIndicator.classList.remove('hidden');
+                answerContainer.classList.add('hidden');
+            } else {
+                buttonText.textContent = '답변 생성하기';
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        generateBtn.addEventListener('click', async () => {
+            const userQuery = studentQuestionInput.value.trim();
+
+            if (userQuery === '') {
+                // 경고 창 대신 UI에 메시지를 표시합니다.
+                teacherAnswerDiv.textContent = '학생의 질문을 입력해주세요.';
+                answerContainer.classList.remove('hidden');
+                return;
+            }
+
+            setLoading(true);
+
+            // Gemini API 호출을 위한 설정
+            const systemPrompt = "당신은 학생들의 질문에 답변하는 친절하고, 지식이 풍부하며, 공감 능력이 뛰어난 교사입니다. 학생의 질문에 대해 충분히 이해하고 학생의 관점에서 친절하고 명확하며, 교육적인 모범 답안을 제시하세요. 답변은 존댓말로 작성하고, 학생의 질문에 공감하는 말로 시작하며, 핵심 내용을 간결하게 전달해야 합니다.";
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API 오류: ${response.status} - ${errorData.error.message}`);
+                }
+
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    teacherAnswerDiv.textContent = text;
+                    answerContainer.classList.remove('hidden');
+                } else {
+                    teacherAnswerDiv.textContent = '답변을 생성할 수 없습니다. 다시 시도해 주세요.';
+                    answerContainer.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Fetch 오류:', error);
+                teacherAnswerDiv.textContent = `오류가 발생했습니다: ${error.message}`;
+                answerContainer.classList.remove('hidden');
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
