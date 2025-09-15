@@ -38,6 +38,11 @@
         </div>
 
         <div class="space-y-4">
+            <label for="apiKeyInput" class="block text-gray-700 font-semibold">Gemini API 키:</label>
+            <input type="password" id="apiKeyInput" placeholder="여기에 API 키를 입력하세요" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
+        </div>
+
+        <div class="space-y-4">
             <label for="studentQuestion" class="block text-gray-700 font-semibold">학생의 질문:</label>
             <textarea id="studentQuestion" rows="5" placeholder="예: 선생님, 왜 수학을 배워야 하나요? 저는 나중에 이과에 가지 않을 건데요." class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 resize-none"></textarea>
         </div>
@@ -54,6 +59,7 @@
     </div>
 
     <script type="module">
+        const apiKeyInput = document.getElementById('apiKeyInput');
         const studentQuestionInput = document.getElementById('studentQuestion');
         const generateBtn = document.getElementById('generateBtn');
         const buttonText = document.getElementById('buttonText');
@@ -75,10 +81,16 @@
         }
 
         generateBtn.addEventListener('click', async () => {
+            const userApiKey = apiKeyInput.value.trim();
             const userQuery = studentQuestionInput.value.trim();
 
+            if (userApiKey === '') {
+                teacherAnswerDiv.textContent = 'API 키를 먼저 입력해주세요.';
+                answerContainer.classList.remove('hidden');
+                return;
+            }
+
             if (userQuery === '') {
-                // 경고 창 대신 UI에 메시지를 표시합니다.
                 teacherAnswerDiv.textContent = '학생의 질문을 입력해주세요.';
                 answerContainer.classList.remove('hidden');
                 return;
@@ -88,8 +100,7 @@
 
             // Gemini API 호출을 위한 설정
             const systemPrompt = "당신은 학생들의 질문에 답변하는 친절하고, 지식이 풍부하며, 공감 능력이 뛰어난 교사입니다. 학생의 질문에 대해 충분히 이해하고 학생의 관점에서 친절하고 명확하며, 교육적인 모범 답안을 제시하세요. 답변은 존댓말로 작성하고, 학생의 질문에 공감하는 말로 시작하며, 핵심 내용을 간결하게 전달해야 합니다.";
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${userApiKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
